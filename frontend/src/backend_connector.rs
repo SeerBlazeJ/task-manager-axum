@@ -47,11 +47,7 @@ pub async fn add_todo(
         .unwrap();
 }
 
-pub async fn mark_done(id: Option<String>) {
-    let id = match id {
-        Some(x) => x,
-        None => panic!("Task id not found"),
-    };
+pub async fn mark_done(id: String) {
     let client = Client::new();
     let body = json!(id);
     client
@@ -61,15 +57,22 @@ pub async fn mark_done(id: Option<String>) {
         .await
         .unwrap();
 }
-pub async fn mark_undone(id: Option<String>) {
-    let id = match id {
-        Some(x) => x,
-        None => panic!("Task id not found"),
-    };
+pub async fn mark_undone(id: String) {
     let client = Client::new();
     let body = json!(id);
     client
         .post("http://localhost:3000/mark_undone")
+        .json(&body)
+        .send()
+        .await
+        .unwrap();
+}
+
+pub async fn delete_todo(id: String) {
+    let client = Client::new();
+    let body = json!(id);
+    client
+        .post("http://localhost:3000/delete")
         .json(&body)
         .send()
         .await

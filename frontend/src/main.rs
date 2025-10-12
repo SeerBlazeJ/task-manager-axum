@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
 mod backend_connector;
-use backend_connector::{add_todo, get_todos, mark_done, mark_undone, Todo};
+use backend_connector::{add_todo, delete_todo, get_todos, mark_done, mark_undone, Todo};
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -10,6 +10,9 @@ const HEADING_STYLE: &str = "heading font-black font-mono text-teal-300 text-5xl
 const BUTTON_STYLE: &str =
     "border-0 rounded-full bg-blue-400 px-4 py-2 hover:scale-115 hover:transition hover:ease-in-out";
 const TODO_LIST_STYLE: &str = "";
+const TODO_ADD_STYLE: &str = "grid items-center";
+const CHECKBOX_FORMATTING: &str =
+    "hover:scale-125 hover:transition hover:ease-in-out checked:accent-teal-500 ";
 
 fn main() {
     dioxus::launch(App);
@@ -22,7 +25,7 @@ fn App() -> Element {
     rsx! {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        div { class: "h-screen text-white dark:bg-slate-900 flex justify-center p-5",
+        div { class: "h-screen text-white flex justify-center p-5 bg-slate-900",
             if !is_add() {
                 Home { is_add, todos }
             } else {
@@ -47,12 +50,17 @@ fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                                 let todo_elements = todos_vec
                                     .iter()
                                     .map(|todo| {
-                                        let id = todo.id.clone();
+                                        let id = match todo.id.clone() {
+                                            Some(x) => x,
+                                            None => panic!("ID not found for task {}", todo.name),
+                                        };
+                                        let del_id = id.clone();
                                         let is_done = todo.is_done;
                                         let name = todo.name.clone();
                                         rsx! {
                                             li {
                                                 input {
+                                                    class: CHECKBOX_FORMATTING,
                                                     r#type: "checkbox",
                                                     checked: is_done,
                                                     oninput: move |_| {
@@ -66,9 +74,19 @@ fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                                                             todos.restart();
                                                         }
                                                     },
-
                                                 }
-                                                span { " {name}" }
+                                                "{name}"
+                                                button {
+                                                    class: "bg-red-500 m-10 max-w-3xs max-h-3xs {BUTTON_STYLE}",
+                                                    onclick: move |_| {
+                                                        let id = del_id.clone();
+                                                        async move {
+                                                            delete_todo(id.clone()).await;
+                                                            todos.restart();
+                                                        }
+                                                    },
+                                                    "Delete"
+                                                }
                                             }
                                         }
                                     });
@@ -113,6 +131,7 @@ fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
             }
             div { class: "info", "{info}" }
             form {
+                class: TODO_ADD_STYLE,
                 onsubmit: move |_| async move {
                     add_todo(
                             new_todo_name.read().clone(),
@@ -173,12 +192,13 @@ fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                         oninput: move |e| new_todo_due.set(e.value()),
                     }
                 }
-                button { class: BUTTON_STYLE, r#type: "submit" }
+                button { class: "bg-yellow-400 {BUTTON_STYLE}", r#type: "submit", "Submit" }
             }
             button {
                 class: BUTTON_STYLE,
                 onclick: move |_| {
                     is_add.set(false);
+                    todos.restart();
                 },
                 "Go Back"
             }

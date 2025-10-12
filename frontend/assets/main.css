@@ -4,4 +4,10 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    /* background-color: darkslategray; */
+}
+
+input {
+    margin: 0.5rem;
+    padding: 0.5rem;
 }

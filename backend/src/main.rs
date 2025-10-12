@@ -6,27 +6,28 @@ use axum::{
     routing::{get, post},
     serve,
 };
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use surrealdb::{
-    Surreal,
+    RecordId, Surreal,
     engine::local::{Db, RocksDb},
 };
 use tokio::net::TcpListener;
 
-use surrealdb::RecordId;
-
-// Custom deserializer to convert RecordId to String
-fn recordid_to_string<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let record_id = RecordId::deserialize(deserializer)?;
-    Ok(Some(record_id.to_string()))
+// Separate struct for database with RecordId
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TodoDB {
+    id: Option<RecordId>,
+    name: String,
+    description: String,
+    due_by: String,
+    imp_lvl: u8,
+    req_time: String,
+    is_done: bool,
 }
 
+// API struct with String ID for frontend
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Todo {
-    #[serde(deserialize_with = "recordid_to_string")]
     id: Option<String>,
     name: String,
     description: String,
@@ -36,16 +37,49 @@ struct Todo {
     is_done: bool,
 }
 
+// Conversions
+impl From<TodoDB> for Todo {
+    fn from(db: TodoDB) -> Self {
+        Self {
+            id: db.id.map(|rid| rid.to_string()),
+            name: db.name,
+            description: db.description,
+            due_by: db.due_by,
+            imp_lvl: db.imp_lvl,
+            req_time: db.req_time,
+            is_done: db.is_done,
+        }
+    }
+}
+
+impl From<Todo> for TodoDB {
+    fn from(api: Todo) -> Self {
+        Self {
+            id: api.id.and_then(|s| s.parse().ok()),
+            name: api.name,
+            description: api.description,
+            due_by: api.due_by,
+            imp_lvl: api.imp_lvl,
+            req_time: api.req_time,
+            is_done: api.is_done,
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     let db_conn = Surreal::new::<RocksDb>("TodosApp").await.unwrap();
+    db_conn.use_ns("core").use_db("todos").await.unwrap();
+
     let router = Router::new()
         .route("/get_todos", get(get_todos))
         .route("/add_todo", post(add_todo))
         .route("/mark_done", post(mark_done))
         .route("/mark_undone", post(mark_undone))
+        .route("/delete", post(delete_todo))
         .with_state(db_conn)
         .layer(tower_http::cors::CorsLayer::permissive());
+
     let addr = TcpListener::bind("localhost:3000")
         .await
         .expect("Couldn't connect to port 3000");
@@ -53,36 +87,43 @@ async fn main() {
 }
 
 async fn get_todos(State(conn): State<Surreal<Db>>) -> impl IntoResponse {
-    conn.use_ns("core").use_db("todos").await.unwrap();
-    let values: Vec<Todo> = conn.select("todos").await.unwrap();
-    Json(values)
+    let values: Vec<TodoDB> = conn.select("todos").await.unwrap();
+    let todos: Vec<Todo> = values.into_iter().map(Todo::from).collect();
+    Json(todos)
 }
 
 async fn add_todo(
     State(conn): State<Surreal<Db>>,
     Json(new_task): Json<Todo>,
 ) -> impl IntoResponse {
-    conn.use_ns("core").use_db("todos").await.unwrap();
-    let _created_task: Vec<Todo> = conn.insert("todos").content(new_task).await.unwrap();
+    let db_task = TodoDB::from(new_task);
+    // CRITICAL FIX: Use Option<TodoDB> instead of Vec<TodoDB>
+    let _created_task: Option<TodoDB> = conn.create("todos").content(db_task).await.unwrap();
     StatusCode::CREATED
 }
 
 async fn mark_done(State(conn): State<Surreal<Db>>, Json(id): Json<String>) -> impl IntoResponse {
-    conn.use_ns("core").use_db("todos").await.unwrap();
-    let record_id: RecordId = id.parse().unwrap(); // Parse string to RecordId
-    conn.query("UPDATE $id SET is_done = true")
-        .bind(("id", record_id))
+    let record_id: RecordId = id.parse().unwrap();
+    let _: Option<TodoDB> = conn
+        .update(record_id)
+        .merge(serde_json::json!({"is_done": true}))
         .await
         .unwrap();
     StatusCode::ACCEPTED
 }
 
 async fn mark_undone(State(conn): State<Surreal<Db>>, Json(id): Json<String>) -> impl IntoResponse {
-    conn.use_ns("core").use_db("todos").await.unwrap();
-    let record_id: RecordId = id.parse().unwrap(); // Parse string to RecordId
-    conn.query("UPDATE $id SET is_done = false")
-        .bind(("id", record_id))
+    let record_id: RecordId = id.parse().unwrap();
+    let _: Option<TodoDB> = conn
+        .update(record_id)
+        .merge(serde_json::json!({"is_done": false}))
         .await
         .unwrap();
+    StatusCode::ACCEPTED
+}
+
+async fn delete_todo(State(conn): State<Surreal<Db>>, Json(id): Json<String>) -> impl IntoResponse {
+    let record_id: RecordId = id.parse().unwrap();
+    let _: Option<TodoDB> = conn.delete(record_id).await.unwrap();
     StatusCode::ACCEPTED
 }

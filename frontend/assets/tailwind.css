@@ -7,11 +7,18 @@
     'Noto Color Emoji';
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
     monospace;
+    --color-red-500: oklch(63.7% 0.237 25.331);
+    --color-yellow-400: oklch(85.2% 0.199 91.936);
     --color-teal-300: oklch(85.5% 0.138 181.071);
+    --color-teal-500: oklch(70.4% 0.14 182.503);
+    --color-blue-200: oklch(88.2% 0.059 254.128);
     --color-blue-400: oklch(70.7% 0.165 254.624);
+    --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-slate-900: oklch(20.8% 0.042 265.755);
+    --color-zinc-950: oklch(14.1% 0.005 285.823);
     --color-white: #fff;
     --spacing: 0.25rem;
+    --container-3xs: 16rem;
     --text-5xl: 3rem;
     --text-5xl--line-height: 1;
     --font-weight-black: 900;
@@ -168,11 +175,20 @@
   }
 }
 @layer utilities {
+  .m-10 {
+    margin: calc(var(--spacing) * 10);
+  }
   .flex {
     display: flex;
   }
+  .grid {
+    display: grid;
+  }
   .h-screen {
     height: 100vh;
+  }
+  .max-w-3xs {
+    max-width: var(--container-3xs);
   }
   .flex-col {
     flex-direction: column;
@@ -195,6 +211,15 @@
   }
   .bg-blue-400 {
     background-color: var(--color-blue-400);
+  }
+  .bg-red-500 {
+    background-color: var(--color-red-500);
+  }
+  .bg-slate-900 {
+    background-color: var(--color-slate-900);
+  }
+  .bg-yellow-400 {
+    background-color: var(--color-yellow-400);
   }
   .p-5 {
     padding: calc(var(--spacing) * 5);
@@ -222,12 +247,27 @@
   .text-white {
     color: var(--color-white);
   }
+  .checked\:accent-teal-500 {
+    &:checked {
+      accent-color: var(--color-teal-500);
+    }
+  }
   .hover\:scale-115 {
     &:hover {
       @media (hover: hover) {
         --tw-scale-x: 115%;
         --tw-scale-y: 115%;
         --tw-scale-z: 115%;
+        scale: var(--tw-scale-x) var(--tw-scale-y);
+      }
+    }
+  }
+  .hover\:scale-125 {
+    &:hover {
+      @media (hover: hover) {
+        --tw-scale-x: 125%;
+        --tw-scale-y: 125%;
+        --tw-scale-z: 125%;
         scale: var(--tw-scale-x) var(--tw-scale-y);
       }
     }
@@ -247,11 +287,6 @@
         --tw-ease: var(--ease-in-out);
         transition-timing-function: var(--ease-in-out);
       }
-    }
-  }
-  .dark\:bg-slate-900 {
-    @media (prefers-color-scheme: dark) {
-      background-color: var(--color-slate-900);
     }
   }
 }
