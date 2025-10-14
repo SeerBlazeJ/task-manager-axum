@@ -1,12 +1,14 @@
+use std::str::FromStr;
+
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     serve,
 };
-use chrono::NaiveDateTime;
+use chrono::{NaiveDate, NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use surrealdb::{
     RecordId, Surreal,
@@ -78,6 +80,7 @@ async fn main() {
         .route("/mark_done", post(mark_done))
         .route("/mark_undone", post(mark_undone))
         .route("/delete", post(delete_todo))
+        .route("/get_todos/{day_str}", get(get_todos_by_day))
         .with_state(db_conn)
         .layer(tower_http::cors::CorsLayer::permissive());
 
@@ -98,7 +101,6 @@ async fn add_todo(
     Json(new_task): Json<Todo>,
 ) -> impl IntoResponse {
     let db_task = TodoDB::from(new_task);
-    // CRITICAL FIX: Use Option<TodoDB> instead of Vec<TodoDB>
     let _created_task: Option<TodoDB> = conn.create("todos").content(db_task).await.unwrap();
     StatusCode::CREATED
 }
@@ -127,4 +129,18 @@ async fn delete_todo(State(conn): State<Surreal<Db>>, Json(id): Json<String>) ->
     let record_id: RecordId = id.parse().unwrap();
     let _: Option<TodoDB> = conn.delete(record_id).await.unwrap();
     StatusCode::ACCEPTED
+}
+
+async fn get_todos_by_day(
+    State(conn): State<Surreal<Db>>,
+    Path(day_str): Path<String>,
+) -> impl IntoResponse {
+    let date = NaiveDate::from_str(&day_str).unwrap();
+    let all_recs: Vec<TodoDB> = conn.select("todos").await.unwrap();
+    let req_recs: Vec<Todo> = all_recs
+        .into_iter()
+        .filter(|todo| todo.due_by.date() == date)
+        .map(Todo::from)
+        .collect();
+    Json(req_recs)
 }

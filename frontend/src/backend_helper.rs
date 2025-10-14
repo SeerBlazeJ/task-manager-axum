@@ -81,6 +81,15 @@ pub async fn delete_todo(id: String) {
         .unwrap();
 }
 
-fn convert_to_datetime(dt: &String) -> NaiveDateTime {
+pub async fn get_day_todos(day: &String) -> Vec<Todo> {
+    get(format!("http://localhost:3000/get_todos/{}", day))
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap()
+}
+
+fn convert_to_datetime(dt: &str) -> NaiveDateTime {
     NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M").expect("Failed to parse datetime")
 }

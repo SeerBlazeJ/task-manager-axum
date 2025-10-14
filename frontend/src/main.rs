@@ -1,10 +1,12 @@
 use std::str::FromStr;
 
-use chrono::{Datelike, NaiveDate, Utc};
+use chrono::{Datelike, Days, NaiveDate, Utc};
 use dioxus::prelude::*;
 
 mod backend_helper;
-use backend_helper::{add_todo, delete_todo, get_todos, mark_done, mark_undone, Todo};
+use backend_helper::{
+    add_todo, delete_todo, get_day_todos, get_todos, mark_done, mark_undone, Todo,
+};
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -38,9 +40,9 @@ fn RouteHandler() -> Element {
 
 #[component]
 fn App() -> Element {
-    let info = use_signal(|| String::new());
+    let info = use_signal(String::new);
     let is_add: Signal<bool> = use_signal(|| false);
-    let todos = use_resource(move || get_todos());
+    let todos = use_resource(get_todos);
     let current_year = use_signal(|| Utc::now().year());
     let current_month = use_signal(|| Utc::now().month());
 
@@ -48,12 +50,12 @@ fn App() -> Element {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         div { class: "h-screen text-white flex justify-center p-5 bg-slate-900",
+            Calendar { current_month, current_year }
             if !is_add() {
                 Home { is_add, todos, info }
             } else {
-                Add { is_add, todos, info }
+                AddTodo { is_add, todos, info }
             }
-            Calendar { current_month, current_year }
         }
     }
 }
@@ -141,13 +143,13 @@ fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) 
 }
 
 #[component]
-fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) -> Element {
-    let mut info = use_signal(|| String::new());
-    let mut new_todo_name = use_signal(|| String::new());
-    let mut new_todo_desc = use_signal(|| String::new());
-    let mut new_todo_due = use_signal(|| String::new());
-    let mut new_todo_imp = use_signal(|| String::new());
-    let mut new_todo_req_time = use_signal(|| String::new());
+fn AddTodo(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) -> Element {
+    let mut info = use_signal(String::new);
+    let mut new_todo_name = use_signal(String::new);
+    let mut new_todo_desc = use_signal(String::new);
+    let mut new_todo_due = use_signal(String::new);
+    let mut new_todo_imp = use_signal(String::new);
+    let mut new_todo_req_time = use_signal(String::new);
     rsx! {
         div { class: "flex flex-col items-center gap-5",
             div { class: HEADING_STYLE,
@@ -313,23 +315,73 @@ fn Calendar(current_month: Signal<u32>, current_year: Signal<i32>) -> Element {
 
 #[component]
 fn DateInfo(date: String) -> Element {
-    // Attempt to parse the date string from the URL
-    if let Ok(parsed_date) = NaiveDate::from_str(&date) {
+    let attempted_to_date = NaiveDate::from_str(&date);
+    let todos = use_resource(move || {
+        let date = date.clone();
+        async move { get_day_todos(&date).await }
+    });
+    if let Ok(parsed_date) = attempted_to_date {
         let date_string = parsed_date.format("%A, %B %-d, %Y").to_string();
         rsx! {
-            div {
-                h1 { "Schedule for {date_string} [The feature is yet to be built]" }
+            div { class: "text-white justify-center p-5 bg-slate-900",
+                h1 { class: "{HEADING_STYLE} text-2xl", "{date_string}" }
+                table { class: " block text-xl",
+                    tr { class: "block border-b-2",
+                        th { class: " p-4 text-left border-r-2", "Time" }
+                        th { class: " p-4 text-center", "Tasks" }
+                    }
+                    for x in 00..24 {
+                        tr { class: "text-lg",
+                            td { class: "p-2 border-r-2 text-right border-b-1 border-b-slate-500",
+                                "{x} - {x+1}"
+                            }
+                            for vec_todo in todos.read().clone().into_iter() {
+                                for todo in vec_todo {
+                                    if x != 23 {
+                                        if todo.due_by > parsed_date.and_hms_opt(x, 0, 0).expect("Couldn't parse into datetime")
+                                            && todo.due_by
+                                                < parsed_date
+                                                    .and_hms_opt(x + 1, 0, 0)
+                                                    .expect("Couldn't parse into datetime")
+                                        {
+                                            td { class: "p-2 text-left border-b-1 border-b-slate-500",
+                                                {todo.name}
+                                            }
+                                        }
+                                    } else {
+                                        if todo.due_by
+                                            > parsed_date
+                                                .and_hms_opt(x, 0, 0)
+                                                .expect("Failed to parse last hour into datetime")
+                                            && todo.due_by
+                                                < parsed_date
+                                                    .checked_add_days(Days::new(1))
+                                                    .unwrap()
+                                                    .and_hms_opt(0, 0, 0)
+                                                    .expect("Failed to parse to the start of next day")
+                                        {
+                                            td { class: "p-2 text-left border-b-1 border-b-slate-500",
+                                                {todo.name}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                br {}
                 button {
                     class: BUTTON_STYLE,
                     onclick: move |_| {
-                        let _ = navigator().go_back();
+                        navigator().push("/");
                     },
-                    "Go back"
+                    "Go to homepage"
                 }
             }
         }
     } else {
-        let _ = navigator().go_back();
+        navigator().go_back();
         rsx!("Invalid date format entered, redirecting you back...")
     }
 }
