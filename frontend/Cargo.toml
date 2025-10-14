@@ -1,14 +1,16 @@
 [package]
 name = "frontend"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["SeerBlazeJ <kaivanmehta957@gmail.com>"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-dioxus = { version = "0.7.0-alpha.3", features = [] }
-reqwest = { version = "0.12.23", features = ["json"] }
+chrono = { version = "0.4.42", features = ["serde"] }
+dioxus = { version = "0.7.0-rc.1", features = ["router"] }
+dioxus-router = "0.7.0-rc.1"
+reqwest = { version = "0.12.24", features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 

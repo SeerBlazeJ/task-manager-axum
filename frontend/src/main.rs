@@ -1,7 +1,10 @@
+use std::str::FromStr;
+
+use chrono::{Datelike, NaiveDate, Utc};
 use dioxus::prelude::*;
 
-mod backend_connector;
-use backend_connector::{add_todo, delete_todo, get_todos, mark_done, mark_undone, Todo};
+mod backend_helper;
+use backend_helper::{add_todo, delete_todo, get_todos, mark_done, mark_undone, Todo};
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
@@ -12,36 +15,57 @@ const BUTTON_STYLE: &str =
 const TODO_LIST_STYLE: &str = "";
 const TODO_ADD_STYLE: &str = "grid items-center";
 const CHECKBOX_FORMATTING: &str =
-    "hover:scale-125 hover:transition hover:ease-in-out checked:accent-teal-500 ";
+    "hover:scale-125 hover:transition hove cd projects/rust/task-manager  r:ease-in-out checked:accent-teal-500  ";
+const NAV_BTN_CLASS: &str =
+    "hover:cursor-pointer hover:transition hover:ease-in-out hover:scale-130 ";
+
+#[derive(Routable, Clone, PartialEq)]
+enum Router {
+    #[route("/")]
+    App,
+    #[route("/day/:date")]
+    DateInfo { date: String },
+}
 
 fn main() {
-    dioxus::launch(App);
+    dioxus::launch(RouteHandler);
+}
+
+#[component]
+fn RouteHandler() -> Element {
+    rsx!(Router::<Router> {})
 }
 
 #[component]
 fn App() -> Element {
+    let info = use_signal(|| String::new());
     let is_add: Signal<bool> = use_signal(|| false);
-    let todos: Resource<Vec<Todo>> = use_resource(move || get_todos());
+    let todos = use_resource(move || get_todos());
+    let current_year = use_signal(|| Utc::now().year());
+    let current_month = use_signal(|| Utc::now().month());
+
     rsx! {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
         div { class: "h-screen text-white flex justify-center p-5 bg-slate-900",
             if !is_add() {
-                Home { is_add, todos }
+                Home { is_add, todos, info }
             } else {
-                Add { is_add, todos }
+                Add { is_add, todos, info }
             }
+            Calendar { current_month, current_year }
         }
     }
 }
 
 #[component]
-fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
+fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) -> Element {
     rsx! {
         div { class: "flex flex-col items-center gap-5",
             div { class: HEADING_STYLE,
                 h1 { "To-Do" }
             }
+            div { class: "info", "{info}" }
             div { class: TODO_LIST_STYLE,
                 ul {
                     match &*todos.read() {
@@ -117,7 +141,7 @@ fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
 }
 
 #[component]
-fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
+fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) -> Element {
     let mut info = use_signal(|| String::new());
     let mut new_todo_name = use_signal(|| String::new());
     let mut new_todo_desc = use_signal(|| String::new());
@@ -133,15 +157,18 @@ fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
             form {
                 class: TODO_ADD_STYLE,
                 onsubmit: move |_| async move {
-                    add_todo(
+                    match add_todo(
                             new_todo_name.read().clone(),
                             new_todo_desc.read().clone(),
                             new_todo_due.read().clone(),
                             new_todo_req_time.read().clone(),
                             new_todo_imp.read().clone(),
                         )
-                        .await;
-                    info.set(format!("New task added with name {new_todo_name}"));
+                        .await
+                    {
+                        Ok(_) => info.set(format!("Task added with name {}", new_todo_name.read())),
+                        Err(_) => info.set("An Error occured while adding the task".to_string()),
+                    };
                     new_todo_name.set(String::new());
                     new_todo_desc.set(String::new());
                     new_todo_due.set(String::new());
@@ -192,7 +219,16 @@ fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                         oninput: move |e| new_todo_due.set(e.value()),
                     }
                 }
-                button { class: "bg-yellow-400 {BUTTON_STYLE}", r#type: "submit", "Submit" }
+                button {
+                    class: "bg-yellow-400 {BUTTON_STYLE} disabled:cursor-not-allowed disabled:bg-neutral-600",
+                    disabled: "{ new_todo_name.read().is_empty() ||
+                    new_todo_desc.read().is_empty() ||
+                    new_todo_imp.read().is_empty()||
+                    new_todo_req_time.read().is_empty()||
+                    new_todo_due.read().is_empty() }",
+                    r#type: "submit",
+                    "Submit"
+                }
             }
             button {
                 class: BUTTON_STYLE,
@@ -203,5 +239,97 @@ fn Add(is_add: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                 "Go Back"
             }
         }
+    }
+}
+
+#[component]
+fn Calendar(current_month: Signal<u32>, current_year: Signal<i32>) -> Element {
+    let curr_month = *current_month.read();
+    let curr_year = *current_year.read();
+    let current_date = NaiveDate::from_ymd_opt(curr_year, curr_month, 1).unwrap();
+
+    let year = current_date.year();
+    let month = current_date.month();
+
+    let first_day_of_month = NaiveDate::from_ymd_opt(year, month, 1).unwrap();
+    let starting_weekday_offset = first_day_of_month.weekday().num_days_from_sunday();
+    let days_in_month = first_day_of_month.num_days_in_month();
+    let month_year_str = current_date.format("%B %Y").to_string();
+
+    rsx! {
+        div { class: "max-w-md mx-auto p-5 font-sans",
+            div { class: "flex justify-between items-center text-center text-xl font-bold mb-5",
+                button {
+                    class: NAV_BTN_CLASS,
+                    onclick: move |_| {
+                        if curr_month == 1 {
+                            current_year.set(curr_year - 1);
+                            current_month.set(12);
+                        } else {
+                            current_month.set(curr_month - 1);
+                        };
+                    },
+                    "←"
+                }
+                h2 { "{month_year_str}" }
+                button {
+                    class: NAV_BTN_CLASS,
+                    onclick: move |_| {
+                        if curr_month == 12 {
+                            current_year.set(curr_year + 1);
+                            current_month.set(1);
+                        } else {
+                            current_month.set(curr_month + 1);
+                        };
+                    },
+                    "→"
+                }
+            }
+
+            div { class: "grid grid-cols-7 gap-3",
+                for day in ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] {
+                    div { class: "text-center font-semibold text-md", "{day}" }
+                }
+                for _ in 0..starting_weekday_offset {
+                    div {}
+                }
+                for day in 1..=days_in_month {
+                    div { class: "text-center p-3 border rounded-lg hover:bg-gray-700 hover:cursor-pointer",
+                        button {
+                            onclick: move |_| {
+                                let date_str = NaiveDate::from_ymd_opt(year, month, day as u32)
+                                    .unwrap()
+                                    .to_string();
+                                let _ = navigator().push(format!("/day/{}", date_str));
+                            },
+                            "{day}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn DateInfo(date: String) -> Element {
+    // Attempt to parse the date string from the URL
+    if let Ok(parsed_date) = NaiveDate::from_str(&date) {
+        let date_string = parsed_date.format("%A, %B %-d, %Y").to_string();
+        rsx! {
+            div {
+                h1 { "Schedule for {date_string} [The feature is yet to be built]" }
+                button {
+                    class: BUTTON_STYLE,
+                    onclick: move |_| {
+                        let _ = navigator().go_back();
+                    },
+                    "Go back"
+                }
+            }
+        }
+    } else {
+        let _ = navigator().go_back();
+        rsx!("Invalid date format entered, redirecting you back...")
     }
 }

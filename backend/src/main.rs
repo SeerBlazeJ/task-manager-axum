@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     serve,
 };
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use surrealdb::{
     RecordId, Surreal,
@@ -19,7 +20,7 @@ struct TodoDB {
     id: Option<RecordId>,
     name: String,
     description: String,
-    due_by: String,
+    due_by: NaiveDateTime,
     imp_lvl: u8,
     req_time: String,
     is_done: bool,
@@ -31,7 +32,7 @@ struct Todo {
     id: Option<String>,
     name: String,
     description: String,
-    due_by: String,
+    due_by: NaiveDateTime,
     imp_lvl: u8,
     req_time: String,
     is_done: bool,
