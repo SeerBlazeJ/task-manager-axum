@@ -55,6 +55,7 @@ impl From<TodoDB> for Todo {
     }
 }
 
+//Converting from front-end compatible format to db compatible format
 impl From<Todo> for TodoDB {
     fn from(api: Todo) -> Self {
         Self {
@@ -74,6 +75,7 @@ async fn main() {
     let db_conn = Surreal::new::<RocksDb>("TodosApp").await.unwrap();
     db_conn.use_ns("core").use_db("todos").await.unwrap();
 
+    // router for managing various requests
     let router = Router::new()
         .route("/get_todos", get(get_todos))
         .route("/add_todo", post(add_todo))

@@ -93,3 +93,15 @@ pub async fn get_day_todos(day: &String) -> Vec<Todo> {
 fn convert_to_datetime(dt: &str) -> NaiveDateTime {
     NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M").expect("Failed to parse datetime")
 }
+
+pub async fn add_sched(
+    title: String,
+    start_date: String,
+    end_date: String,
+    imp: String,
+    start_time: String,
+    end_time: String,
+    weekdays: Vec<String>,
+) -> Result<(), Box<dyn Error>> {
+    Ok(())
+}

@@ -5,13 +5,13 @@ use dioxus::prelude::*;
 
 mod backend_helper;
 use backend_helper::{
-    add_todo, delete_todo, get_day_todos, get_todos, mark_done, mark_undone, Todo,
+    add_sched, add_todo, delete_todo, get_day_todos, get_todos, mark_done, mark_undone, Todo,
 };
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
-const HEADING_STYLE: &str = "heading font-black font-mono text-teal-300 text-5xl";
+const HEADING_STYLE: &str = "heading font-black font-mono text-teal-300 text-5xl text-center";
 const BUTTON_STYLE: &str =
     "border-0 rounded-full bg-blue-400 px-4 py-2 hover:scale-115 hover:transition hover:ease-in-out";
 const TODO_LIST_STYLE: &str = "";
@@ -29,6 +29,8 @@ enum Router {
     DateInfo { date: String },
 }
 
+// NEXT: Add a static schedule and make it reflect in the schedules
+
 fn main() {
     dioxus::launch(RouteHandler);
 }
@@ -38,10 +40,11 @@ fn RouteHandler() -> Element {
     rsx!(Router::<Router> {})
 }
 
+// Base app interface
 #[component]
 fn App() -> Element {
-    let info = use_signal(String::new);
-    let is_add: Signal<bool> = use_signal(|| false);
+    let is_add_task: Signal<bool> = use_signal(|| false);
+    let open_sched_editor: Signal<bool> = use_signal(|| false);
     let todos = use_resource(get_todos);
     let current_year = use_signal(|| Utc::now().year());
     let current_month = use_signal(|| Utc::now().month());
@@ -49,25 +52,44 @@ fn App() -> Element {
     rsx! {
         document::Link { rel: "stylesheet", href: MAIN_CSS }
         document::Link { rel: "stylesheet", href: TAILWIND_CSS }
-        div { class: "h-screen text-white flex justify-center p-5 bg-slate-900",
-            Calendar { current_month, current_year }
-            if !is_add() {
-                Home { is_add, todos, info }
+        div { class: "h-screen text-white justify-center p-5 bg-slate-900",
+            if is_add_task() {
+                AddTodo { is_add_task, todos }
+            } else if open_sched_editor() {
+                SchedEditor { open_sched_editor }
             } else {
-                AddTodo { is_add, todos, info }
+                div { class: "flex flex-row gap-8",
+                    div { class: "w-1/2",
+                        div { class: HEADING_STYLE,
+                            h1 { "Tasks" }
+                        }
+                        Home {
+                            is_add_task,
+                            open_sched_editor,
+                            todos,
+                        }
+                    }
+                    div { class: "w-1/2",
+                        div { class: HEADING_STYLE,
+                            h1 { "Schedule" }
+                        }
+                        Calendar { current_month, current_year }
+                    }
+                }
             }
         }
     }
 }
 
+// Homepage - render a list of tasks
 #[component]
-fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) -> Element {
+fn Home(
+    is_add_task: Signal<bool>,
+    open_sched_editor: Signal<bool>,
+    todos: Resource<Vec<Todo>>,
+) -> Element {
     rsx! {
         div { class: "flex flex-col items-center gap-5",
-            div { class: HEADING_STYLE,
-                h1 { "To-Do" }
-            }
-            div { class: "info", "{info}" }
             div { class: TODO_LIST_STYLE,
                 ul {
                     match &*todos.read() {
@@ -134,16 +156,24 @@ fn Home(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) 
             button {
                 class: BUTTON_STYLE,
                 onclick: move |_| {
-                    is_add.set(true);
+                    is_add_task.set(true);
                 },
-                "Add"
+                "Add Task"
+            }
+            button {
+                class: BUTTON_STYLE,
+                onclick: move |_| {
+                    open_sched_editor.set(true);
+                },
+                "Modify Schedule"
             }
         }
     }
 }
 
+// Form to add a new task
 #[component]
-fn AddTodo(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String>) -> Element {
+fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
     let mut info = use_signal(String::new);
     let mut new_todo_name = use_signal(String::new);
     let mut new_todo_desc = use_signal(String::new);
@@ -235,7 +265,7 @@ fn AddTodo(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String
             button {
                 class: BUTTON_STYLE,
                 onclick: move |_| {
-                    is_add.set(false);
+                    is_add_task.set(false);
                     todos.restart();
                 },
                 "Go Back"
@@ -244,6 +274,7 @@ fn AddTodo(is_add: Signal<bool>, todos: Resource<Vec<Todo>>, info: Signal<String
     }
 }
 
+// Calender UI
 #[component]
 fn Calendar(current_month: Signal<u32>, current_year: Signal<i32>) -> Element {
     let curr_month = *current_month.read();
@@ -296,14 +327,14 @@ fn Calendar(current_month: Signal<u32>, current_year: Signal<i32>) -> Element {
                     div {}
                 }
                 for day in 1..=days_in_month {
-                    div { class: "text-center p-3 border rounded-lg hover:bg-gray-700 hover:cursor-pointer",
-                        button {
-                            onclick: move |_| {
-                                let date_str = NaiveDate::from_ymd_opt(year, month, day as u32)
-                                    .unwrap()
-                                    .to_string();
-                                let _ = navigator().push(format!("/day/{}", date_str));
-                            },
+                    button {
+                        onclick: move |_| {
+                            let date_str = NaiveDate::from_ymd_opt(year, month, day as u32)
+                                .unwrap()
+                                .to_string();
+                            let _ = navigator().push(format!("/day/{}", date_str));
+                        },
+                        div { class: "text-center p-3 border rounded-lg hover:bg-gray-700 hover:cursor-pointer",
                             "{day}"
                         }
                     }
@@ -313,6 +344,7 @@ fn Calendar(current_month: Signal<u32>, current_year: Signal<i32>) -> Element {
     }
 }
 
+// Date-specific page loader
 #[component]
 fn DateInfo(date: String) -> Element {
     let attempted_to_date = NaiveDate::from_str(&date);
@@ -325,7 +357,7 @@ fn DateInfo(date: String) -> Element {
         rsx! {
             div { class: "text-white justify-center p-5 bg-slate-900",
                 h1 { class: "{HEADING_STYLE} text-2xl", "{date_string}" }
-                table { class: " block text-xl",
+                table { class: " block text-xl border-b-2 border-b-slate-100",
                     tr { class: "block border-b-2",
                         th { class: " p-4 text-left border-r-2", "Time" }
                         th { class: " p-4 text-center", "Tasks" }
@@ -344,7 +376,7 @@ fn DateInfo(date: String) -> Element {
                                                     .and_hms_opt(x + 1, 0, 0)
                                                     .expect("Couldn't parse into datetime")
                                         {
-                                            td { class: "p-2 text-left border-b-1 border-b-slate-500",
+                                            td { class: "p-2 text-left border-b-1 border-b-slate-500 border-r-1 border-r-slate-400 border-t-1 border-t-slate-400",
                                                 {todo.name}
                                             }
                                         }
@@ -360,7 +392,7 @@ fn DateInfo(date: String) -> Element {
                                                     .and_hms_opt(0, 0, 0)
                                                     .expect("Failed to parse to the start of next day")
                                         {
-                                            td { class: "p-2 text-left border-b-1 border-b-slate-500",
+                                            td { class: "p-2 text-left border-b-1 border-b-slate-500 border-r-1 border-r-slate-400 border-u-1 border-u-slate-400",
                                                 {todo.name}
                                             }
                                         }
@@ -383,5 +415,121 @@ fn DateInfo(date: String) -> Element {
     } else {
         navigator().go_back();
         rsx!("Invalid date format entered, redirecting you back...")
+    }
+}
+
+// Editor interface for managing schedules, current implementation supports only adding and that too is not yet reflected in the server database
+
+#[component]
+fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
+    let mut info = use_signal(String::new);
+    let mut new_scheditem_title = use_signal(String::new);
+    let mut new_scheditem_start_date = use_signal(String::new);
+    let mut new_scheditem_end_date = use_signal(String::new);
+    let mut new_scheditem_imp = use_signal(String::new);
+    let mut new_scheditem_time_start = use_signal(String::new);
+    let mut new_scheditem_time_end = use_signal(String::new);
+    let mut new_scheditem_weekdays: Signal<Vec<String>> = use_signal(Vec::new);
+    rsx! {
+        div { class: "flex flex-col items-center gap-5",
+            div { class: HEADING_STYLE,
+                h1 { "Add a task" }
+            }
+            div { class: "info", "{info}" }
+            form {
+                class: TODO_ADD_STYLE,
+                onsubmit: move |_| async move {
+                    match add_sched(
+                            new_scheditem_title.read().clone(),
+                            new_scheditem_start_date.read().clone(),
+                            new_scheditem_end_date.read().clone(),
+                            new_scheditem_imp.read().clone(),
+                            new_scheditem_time_start.read().clone(),
+                            new_scheditem_time_end.read().clone(),
+                            new_scheditem_weekdays.read().clone(),
+                        )
+                        .await
+                    {
+                        Ok(_) => {
+                            info.set(format!("Task added with name {}", new_scheditem_title.read()))
+                        }
+                        Err(_) => info.set("An Error occured while adding the task".to_string()),
+                    };
+                    new_scheditem_title.set(String::new());
+                    new_scheditem_start_date.set(String::new());
+                    new_scheditem_end_date.set(String::new());
+                    new_scheditem_imp.set(String::new());
+                    new_scheditem_time_start.set(String::new());
+                    new_scheditem_time_start.set(String::new());
+                    new_scheditem_weekdays.set(Vec::new());
+                },
+                label {
+                    "Title: "
+                    input {
+                        r#type: "text",
+                        placeholder: "e.g. Office hours",
+                        value: "{new_scheditem_title}",
+                        oninput: move |e| new_scheditem_title.set(e.value()),
+                    }
+                }
+                label {
+                    "Start Date: "
+                    input {
+                        r#type: "date",
+                        oninput: move |date| new_scheditem_start_date.set(date.value()),
+                    }
+                }
+                label {
+                    "End Date: "
+                    input {
+                        r#type: "date",
+                        oninput: move |date| new_scheditem_end_date.set(date.value()),
+                    }
+                }
+                label {
+                    "Importance Level: "
+                    input {
+                        r#type: "range",
+                        min: 1,
+                        max: 10,
+                        value: "{new_scheditem_imp}",
+                        oninput: move |e| new_scheditem_imp.set(e.value()),
+                    }
+                }
+                label {
+                    "Duration required: "
+                    input {
+                        r#type: "text",
+                        value: "{new_scheditem_time_start}",
+                        oninput: move |e| new_scheditem_time_start.set(e.value()),
+                    }
+                }
+                label {
+                    "Due by: "
+                    input {
+                        r#type: "datetime-local",
+                        value: "{new_scheditem_time_end}",
+                        oninput: move |e| new_scheditem_time_end.set(e.value()),
+                    }
+                }
+                button {
+                    class: "bg-yellow-400 {BUTTON_STYLE} disabled:cursor-not-allowed disabled:bg-neutral-600",
+                    disabled: "{ new_scheditem_title.read().is_empty() ||
+                    new_scheditem_start_date.read().is_empty() ||
+                    new_scheditem_end_date.read().is_empty()||
+                    new_scheditem_imp.read().is_empty()||
+                    new_scheditem_time_start.read().is_empty() || new_scheditem_time_start.read().is_empty() }",
+                    r#type: "submit",
+                    "Submit"
+                }
+            }
+            button {
+                class: BUTTON_STYLE,
+                onclick: move |_| {
+                    open_sched_editor.set(false);
+                },
+                "Go Back"
+            }
+        }
     }
 }
