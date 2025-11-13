@@ -26,7 +26,7 @@ Task Sorter is a desktop task management application that helps you track todos 
 - **Tower-HTTP** - CORS middleware
 
 ### Frontend
-- **Dioxus 0.7.0-rc.1** - Cross-platform UI framework
+- **Dioxus 0.7.0** - Cross-platform UI framework
 - **Dioxus Desktop** - Native desktop application wrapper
 - **Reqwest** - HTTP client for backend communication
 
