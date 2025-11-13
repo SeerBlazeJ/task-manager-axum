@@ -12,6 +12,7 @@
     --color-teal-300: oklch(85.5% 0.138 181.071);
     --color-teal-500: oklch(70.4% 0.14 182.503);
     --color-blue-400: oklch(70.7% 0.165 254.624);
+    --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-slate-100: oklch(96.8% 0.007 247.896);
     --color-slate-400: oklch(70.4% 0.04 256.788);
     --color-slate-500: oklch(55.4% 0.046 257.417);
@@ -22,6 +23,8 @@
     --spacing: 0.25rem;
     --container-3xs: 16rem;
     --container-md: 28rem;
+    --text-sm: 0.875rem;
+    --text-sm--line-height: calc(1.25 / 0.875);
     --text-lg: 1.125rem;
     --text-lg--line-height: calc(1.75 / 1.125);
     --text-xl: 1.25rem;
@@ -187,8 +190,8 @@
   }
 }
 @layer utilities {
-  .static {
-    position: static;
+  .m-2 {
+    margin: calc(var(--spacing) * 2);
   }
   .m-10 {
     margin: calc(var(--spacing) * 10);
@@ -299,6 +302,9 @@
   .bg-blue-400 {
     background-color: var(--color-blue-400);
   }
+  .bg-blue-500 {
+    background-color: var(--color-blue-500);
+  }
   .bg-red-500 {
     background-color: var(--color-red-500);
   }
@@ -307,6 +313,9 @@
   }
   .bg-yellow-400 {
     background-color: var(--color-yellow-400);
+  }
+  .p-1 {
+    padding: calc(var(--spacing) * 1);
   }
   .p-2 {
     padding: calc(var(--spacing) * 2);
@@ -335,6 +344,9 @@
   .text-right {
     text-align: right;
   }
+  .font-\[roboto-mono\] {
+    font-family: roboto-mono;
+  }
   .font-mono {
     font-family: var(--font-mono);
   }
@@ -353,6 +365,10 @@
     font-size: var(--text-lg);
     line-height: var(--tw-leading, var(--text-lg--line-height));
   }
+  .text-sm {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
   .text-xl {
     font-size: var(--text-xl);
     line-height: var(--tw-leading, var(--text-xl--line-height));
@@ -369,11 +385,18 @@
     --tw-font-weight: var(--font-weight-semibold);
     font-weight: var(--font-weight-semibold);
   }
+  .text-red-500 {
+    color: var(--color-red-500);
+  }
   .text-teal-300 {
     color: var(--color-teal-300);
   }
   .text-white {
     color: var(--color-white);
+  }
+  .subpixel-antialiased {
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
   }
   .checked\:accent-teal-500 {
     &:checked {

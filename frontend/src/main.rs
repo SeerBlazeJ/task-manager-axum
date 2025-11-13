@@ -5,7 +5,8 @@ use dioxus::prelude::*;
 
 mod backend_helper;
 use backend_helper::{
-    add_sched, add_todo, delete_todo, get_day_todos, get_todos, mark_done, mark_undone, Todo,
+    add_sched, add_todo, delete_todo, get_day_todos, get_todos, mark_done, mark_undone, SchedItem,
+    Task,
 };
 
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -19,7 +20,7 @@ const TODO_ADD_STYLE: &str = "grid items-center";
 const CHECKBOX_FORMATTING: &str =
     "hover:scale-125 hover:transition hove cd projects/rust/task-manager  r:ease-in-out checked:accent-teal-500  ";
 const NAV_BTN_CLASS: &str =
-    "hover:cursor-pointer hover:transition hover:ease-in-out hover:scale-130 ";
+    "hover:cursor-pointer hover:transition hover:ease-in-out hover:scale-130";
 
 #[derive(Routable, Clone, PartialEq)]
 enum Router {
@@ -29,7 +30,7 @@ enum Router {
     DateInfo { date: String },
 }
 
-// NEXT: Add a static schedule and make it reflect in the schedules
+// NEXT: Update the backend and backend_helper for managing schedule in 10 minute time frames
 
 fn main() {
     dioxus::launch(RouteHandler);
@@ -86,7 +87,7 @@ fn App() -> Element {
 fn Home(
     is_add_task: Signal<bool>,
     open_sched_editor: Signal<bool>,
-    todos: Resource<Vec<Todo>>,
+    todos: Resource<Vec<Task>>,
 ) -> Element {
     rsx! {
         div { class: "flex flex-col items-center gap-5",
@@ -165,7 +166,7 @@ fn Home(
                 onclick: move |_| {
                     open_sched_editor.set(true);
                 },
-                "Modify Schedule"
+                "Modify routine"
             }
         }
     }
@@ -173,13 +174,15 @@ fn Home(
 
 // Form to add a new task
 #[component]
-fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
+fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Task>>) -> Element {
     let mut info = use_signal(String::new);
     let mut new_todo_name = use_signal(String::new);
     let mut new_todo_desc = use_signal(String::new);
     let mut new_todo_due = use_signal(String::new);
     let mut new_todo_imp = use_signal(String::new);
-    let mut new_todo_req_time = use_signal(String::new);
+    let mut new_todo_req_time_hours = use_signal(|| 0u8);
+    let mut new_todo_req_time_mins = use_signal(|| 0u8);
+
     rsx! {
         div { class: "flex flex-col items-center gap-5",
             div { class: HEADING_STYLE,
@@ -189,11 +192,16 @@ fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
             form {
                 class: TODO_ADD_STYLE,
                 onsubmit: move |_| async move {
+                    let formatted_time = format!(
+                        "{:02}:{:02}",
+                        new_todo_req_time_hours(),
+                        new_todo_req_time_mins(),
+                    );
                     match add_todo(
                             new_todo_name.read().clone(),
                             new_todo_desc.read().clone(),
                             new_todo_due.read().clone(),
-                            new_todo_req_time.read().clone(),
+                            formatted_time,
                             new_todo_imp.read().clone(),
                         )
                         .await
@@ -205,7 +213,8 @@ fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                     new_todo_desc.set(String::new());
                     new_todo_due.set(String::new());
                     new_todo_imp.set(String::new());
-                    new_todo_req_time.set(String::new());
+                    new_todo_req_time_hours.set(0);
+                    new_todo_req_time_mins.set(0);
                     todos.restart();
                 },
                 label {
@@ -236,11 +245,39 @@ fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                     }
                 }
                 label {
-                    "Duration required: "
-                    input {
-                        r#type: "text",
-                        value: "{new_todo_req_time}",
-                        oninput: move |e| new_todo_req_time.set(e.value()),
+                    "Duration required [HH:MM] : "
+                    div { style: "display: inline-flex; align-items: center; gap: 4px;",
+                        input {
+                            r#type: "number",
+                            min: "0",
+                            max: "99",
+                            placeholder: "HH",
+                            style: "width: 60px;",
+                            value: "{new_todo_req_time_hours}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<u8>() {
+                                    if val <= 99 {
+                                        new_todo_req_time_hours.set(val);
+                                    }
+                                }
+                            },
+                        }
+                        span { ":" }
+                        input {
+                            r#type: "number",
+                            min: "0",
+                            max: "59",
+                            placeholder: "MM",
+                            style: "width: 60px;",
+                            value: "{new_todo_req_time_mins}",
+                            oninput: move |e| {
+                                if let Ok(val) = e.value().parse::<u8>() {
+                                    if val <= 59 {
+                                        new_todo_req_time_mins.set(val);
+                                    }
+                                }
+                            },
+                        }
                     }
                 }
                 label {
@@ -253,11 +290,10 @@ fn AddTodo(is_add_task: Signal<bool>, todos: Resource<Vec<Todo>>) -> Element {
                 }
                 button {
                     class: "bg-yellow-400 {BUTTON_STYLE} disabled:cursor-not-allowed disabled:bg-neutral-600",
-                    disabled: "{ new_todo_name.read().is_empty() ||
+                    disabled: "{new_todo_name.read().is_empty() ||
                     new_todo_desc.read().is_empty() ||
-                    new_todo_imp.read().is_empty()||
-                    new_todo_req_time.read().is_empty()||
-                    new_todo_due.read().is_empty() }",
+                    new_todo_imp.read().is_empty() ||
+                    new_todo_due.read().is_empty()}",
                     r#type: "submit",
                     "Submit"
                 }
@@ -419,7 +455,6 @@ fn DateInfo(date: String) -> Element {
 }
 
 // Editor interface for managing schedules, current implementation supports only adding and that too is not yet reflected in the server database
-
 #[component]
 fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
     let mut info = use_signal(String::new);
@@ -430,26 +465,36 @@ fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
     let mut new_scheditem_time_start = use_signal(String::new);
     let mut new_scheditem_time_end = use_signal(String::new);
     let mut new_scheditem_weekdays: Signal<Vec<String>> = use_signal(Vec::new);
+
+    // Helper function to toggle weekday selection
+    let mut toggle_weekday = move |day: String| {
+        let mut weekdays = new_scheditem_weekdays.write();
+        if let Some(pos) = weekdays.iter().position(|d| d == &day) {
+            weekdays.remove(pos);
+        } else {
+            weekdays.push(day);
+        }
+    };
+
     rsx! {
         div { class: "flex flex-col items-center gap-5",
             div { class: HEADING_STYLE,
-                h1 { "Add a task" }
+                h1 { "Add a new routine" }
             }
             div { class: "info", "{info}" }
             form {
                 class: TODO_ADD_STYLE,
                 onsubmit: move |_| async move {
-                    match add_sched(
-                            new_scheditem_title.read().clone(),
-                            new_scheditem_start_date.read().clone(),
-                            new_scheditem_end_date.read().clone(),
-                            new_scheditem_imp.read().clone(),
-                            new_scheditem_time_start.read().clone(),
-                            new_scheditem_time_end.read().clone(),
-                            new_scheditem_weekdays.read().clone(),
-                        )
-                        .await
-                    {
+                    let sched_item = SchedItem {
+                        title: new_scheditem_title.read().clone(),
+                        start_date: new_scheditem_start_date.read().clone(),
+                        end_date: new_scheditem_end_date.read().clone(),
+                        imp: new_scheditem_imp.read().clone(),
+                        start_time: new_scheditem_time_start.read().clone(),
+                        end_time: new_scheditem_time_end.read().clone(),
+                        weekdays: new_scheditem_weekdays.read().clone(),
+                    };
+                    match add_sched(sched_item).await {
                         Ok(_) => {
                             info.set(format!("Task added with name {}", new_scheditem_title.read()))
                         }
@@ -460,14 +505,14 @@ fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
                     new_scheditem_end_date.set(String::new());
                     new_scheditem_imp.set(String::new());
                     new_scheditem_time_start.set(String::new());
-                    new_scheditem_time_start.set(String::new());
+                    new_scheditem_time_end.set(String::new());
                     new_scheditem_weekdays.set(Vec::new());
                 },
                 label {
                     "Title: "
                     input {
                         r#type: "text",
-                        placeholder: "e.g. Office hours",
+                        placeholder: "e.g. Office/Sleep",
                         value: "{new_scheditem_title}",
                         oninput: move |e| new_scheditem_title.set(e.value()),
                     }
@@ -476,6 +521,7 @@ fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
                     "Start Date: "
                     input {
                         r#type: "date",
+                        value: "{new_scheditem_start_date}",
                         oninput: move |date| new_scheditem_start_date.set(date.value()),
                     }
                 }
@@ -483,11 +529,12 @@ fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
                     "End Date: "
                     input {
                         r#type: "date",
+                        value: "{new_scheditem_end_date}",
                         oninput: move |date| new_scheditem_end_date.set(date.value()),
                     }
                 }
                 label {
-                    "Importance Level: "
+                    "Importance Level: {new_scheditem_imp}"
                     input {
                         r#type: "range",
                         min: 1,
@@ -497,28 +544,75 @@ fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
                     }
                 }
                 label {
-                    "Duration required: "
+                    "Starting time of the routine: "
                     input {
-                        r#type: "text",
+                        r#type: "time",
                         value: "{new_scheditem_time_start}",
                         oninput: move |e| new_scheditem_time_start.set(e.value()),
                     }
                 }
                 label {
-                    "Due by: "
+                    "Ending time of the routine: "
                     input {
-                        r#type: "datetime-local",
+                        r#type: "time",
                         value: "{new_scheditem_time_end}",
                         oninput: move |e| new_scheditem_time_end.set(e.value()),
+                    }
+                }
+                label {
+                    "Days: "
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Sunday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-red-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm text-red-500 border rounded-full" },
+                        onclick: move |_| toggle_weekday("Sunday".to_string()),
+                        "Su"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Monday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-blue-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm border rounded-full" },
+                        onclick: move |_| toggle_weekday("Monday".to_string()),
+                        "Mo"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Tuesday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-blue-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm border rounded-full" },
+                        onclick: move |_| toggle_weekday("Tuesday".to_string()),
+                        "Tu"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Wednesday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-blue-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm border rounded-full" },
+                        onclick: move |_| toggle_weekday("Wednesday".to_string()),
+                        "We"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Thursday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-blue-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm border rounded-full" },
+                        onclick: move |_| toggle_weekday("Thursday".to_string()),
+                        "Th"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Friday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-blue-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm border rounded-full" },
+                        onclick: move |_| toggle_weekday("Friday".to_string()),
+                        "Fr"
+                    }
+                    button {
+                        r#type: "button",
+                        class: if new_scheditem_weekdays.read().contains(&"Saturday".to_string()) { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm bg-blue-500 text-white border rounded-full" } else { "hover:cursor-pointer font-[roboto-mono] subpixel-antialiased p-1 m-2 text-sm border rounded-full" },
+                        onclick: move |_| toggle_weekday("Saturday".to_string()),
+                        "Sa"
                     }
                 }
                 button {
                     class: "bg-yellow-400 {BUTTON_STYLE} disabled:cursor-not-allowed disabled:bg-neutral-600",
                     disabled: "{ new_scheditem_title.read().is_empty() ||
                     new_scheditem_start_date.read().is_empty() ||
-                    new_scheditem_end_date.read().is_empty()||
-                    new_scheditem_imp.read().is_empty()||
-                    new_scheditem_time_start.read().is_empty() || new_scheditem_time_start.read().is_empty() }",
+                    new_scheditem_end_date.read().is_empty() ||
+                    new_scheditem_imp.read().is_empty() ||
+                    new_scheditem_time_start.read().is_empty() ||
+                    new_scheditem_time_end.read().is_empty() ||
+                    new_scheditem_weekdays.read().is_empty() }",
                     r#type: "submit",
                     "Submit"
                 }

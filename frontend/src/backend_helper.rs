@@ -5,7 +5,7 @@ use serde_json::json;
 use std::error::Error;
 
 #[derive(PartialEq, Clone, Serialize, Deserialize)]
-pub struct Todo {
+pub struct Task {
     pub id: Option<String>,
     pub name: String,
     pub description: String,
@@ -15,8 +15,19 @@ pub struct Todo {
     pub is_done: bool,
 }
 
-pub async fn get_todos() -> Vec<Todo> {
-    get("http://localhost:3000/get_todos")
+#[derive(PartialEq, Clone, Serialize, Deserialize)]
+pub struct SchedItem {
+    pub title: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub imp: String,
+    pub start_time: String,
+    pub end_time: String,
+    pub weekdays: Vec<String>,
+}
+
+pub async fn get_todos() -> Vec<Task> {
+    get("http://localhost:3000/get_tasks")
         .await
         .unwrap()
         .json()
@@ -32,7 +43,7 @@ pub async fn add_todo(
     imp_lvl: String,
 ) -> Result<(), Box<dyn Error>> {
     let client = Client::new();
-    let body = json!(Todo {
+    let body = json!(Task {
         id: None,
         name,
         description,
@@ -42,7 +53,7 @@ pub async fn add_todo(
         is_done: false
     });
     client
-        .post("http://localhost:3000/add_todo")
+        .post("http://localhost:3000/add_task")
         .json(&body)
         .send()
         .await?;
@@ -81,8 +92,8 @@ pub async fn delete_todo(id: String) {
         .unwrap();
 }
 
-pub async fn get_day_todos(day: &String) -> Vec<Todo> {
-    get(format!("http://localhost:3000/get_todos/{}", day))
+pub async fn get_day_todos(day: &String) -> Vec<Task> {
+    get(format!("http://localhost:3000/get_tasks/{}", day))
         .await
         .unwrap()
         .json()
@@ -94,14 +105,6 @@ fn convert_to_datetime(dt: &str) -> NaiveDateTime {
     NaiveDateTime::parse_from_str(dt, "%Y-%m-%dT%H:%M").expect("Failed to parse datetime")
 }
 
-pub async fn add_sched(
-    title: String,
-    start_date: String,
-    end_date: String,
-    imp: String,
-    start_time: String,
-    end_time: String,
-    weekdays: Vec<String>,
-) -> Result<(), Box<dyn Error>> {
+pub async fn add_sched(sched_item: SchedItem) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
