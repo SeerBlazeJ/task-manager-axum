@@ -1,13 +1,265 @@
-/* App-wide styling */
+/* ===== Design System & CSS Variables ===== */
+:root {
+    /* Color palette */
+    --color-primary: #14b8a6;
+    /* teal-500 */
+    --color-primary-dark: #0d9488;
+    /* teal-600 */
+    --color-primary-light: #5eead4;
+    /* teal-300 */
+    --color-secondary: #60a5fa;
+    /* blue-400 */
+    --color-accent: #fbbf24;
+    /* yellow-400 */
+    --color-danger: #ef4444;
+    /* red-500 */
+    --color-success: #10b981;
+    /* emerald-500 */
 
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    --shadow-glow: 0 0 20px rgb(20 184 166 / 0.3);
+}
+
+/* ===== Global Styles ===== */
 * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
-    /* background-color: darkslategray; */
 }
 
-input {
-    margin: 0.5rem;
-    padding: 0.5rem;
+/* ===== Custom Animations ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+@keyframes pulse-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px rgba(20, 184, 166, 0.3);
+    }
+
+    50% {
+        box-shadow: 0 0 25px rgba(20, 184, 166, 0.6);
+    }
+}
+
+/* ===== Animation Classes ===== */
+.animate-fade-in {
+    animation: fadeIn var(--transition-base) ease-out forwards;
+}
+
+.animate-fade-in-scale {
+    animation: fadeInScale var(--transition-base) ease-out forwards;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight var(--transition-base) ease-out forwards;
+}
+
+.animate-slide-in-left {
+    animation: slideInLeft var(--transition-base) ease-out forwards;
+}
+
+.animate-shimmer {
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0) 100%);
+    background-size: 1000px 100%;
+    animation: shimmer 2s infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ===== Staggered Animation Delays ===== */
+.stagger-1 {
+    animation-delay: 100ms;
+}
+
+.stagger-2 {
+    animation-delay: 200ms;
+}
+
+.stagger-3 {
+    animation-delay: 300ms;
+}
+
+.stagger-4 {
+    animation-delay: 400ms;
+}
+
+.stagger-5 {
+    animation-delay: 500ms;
+}
+
+/* ===== Input Styles ===== */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+input[type="range"],
+textarea {
+    @apply w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all duration-200;
+}
+
+input[type="text"]:hover,
+input[type="number"]:hover,
+input[type="date"]:hover,
+input[type="time"]:hover,
+input[type="datetime-local"]:hover,
+textarea:hover {
+    @apply border-slate-600 bg-slate-750;
+}
+
+textarea {
+    @apply min-h-[100px] resize-y;
+}
+
+/* ===== Range Input Styling ===== */
+input[type="range"] {
+    @apply h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    @apply appearance-none w-5 h-5 bg-teal-500 rounded-full cursor-pointer hover:bg-teal-400 transition-colors duration-200;
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.5);
+}
+
+input[type="range"]::-moz-range-thumb {
+    @apply w-5 h-5 bg-teal-500 rounded-full cursor-pointer border-0 hover:bg-teal-400 transition-colors duration-200;
+    box-shadow: 0 0 10px rgba(20, 184, 166, 0.5);
+}
+
+/* ===== Card Styles ===== */
+.card {
+    @apply bg-slate-800 rounded-xl shadow-xl border border-slate-700 transition-all duration-300;
+}
+
+.card:hover {
+    @apply shadow-2xl border-slate-600 transform -translate-y-0.5;
+}
+
+.card-glass {
+    @apply bg-slate-800/50 backdrop-blur-lg rounded-xl shadow-xl border border-slate-700/50;
+}
+
+/* ===== Button Hover Effects ===== */
+.btn-hover-lift:hover {
+    @apply -translate-y-0.5 shadow-lg;
+}
+
+.btn-hover-scale:hover {
+    @apply scale-105;
+}
+
+/* ===== Scrollbar Styling ===== */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-slate-800 rounded-lg;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-slate-600 rounded-lg hover:bg-slate-500;
+}
+
+/* ===== Loading State ===== */
+.loading-skeleton {
+    @apply bg-slate-700 animate-pulse rounded;
+}
+
+/* ===== Focus Visible States ===== */
+*:focus-visible {
+    @apply outline-none ring-2 ring-teal-500 ring-offset-2 ring-offset-slate-900;
+}
+
+/* ===== Utility Classes ===== */
+.glass-effect {
+    backdrop-filter: blur(12px);
+    background: rgba(30, 41, 59, 0.7);
+}
+
+.gradient-primary {
+    background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+}
+
+.gradient-accent {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+}
+
+.text-gradient {
+    background: linear-gradient(135deg, #5eead4 0%, #14b8a6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }
