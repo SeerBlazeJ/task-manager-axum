@@ -1,6 +1,6 @@
 [package]
-name = "frontend"
-version = "0.7.0"
+name = "TaskFlow"
+version = "0.0.8"
 authors = ["SeerBlazeJ <kaivanmehta957@gmail.com>"]
 edition = "2021"
 
