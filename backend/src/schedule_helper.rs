@@ -82,24 +82,27 @@ pub async fn add_schedule(
     StatusCode::CREATED
 }
 
-// Still buggy, need to be debugged : Not able to add alloted time to tasks once the schedule is created: Root- It is modified but not updates in the database
+// TODO: Create a new database for schedules
 pub async fn get_schedule_by_day(
     State(conn): State<Surreal<Db>>,
     Path(day_str): Path<String>,
 ) -> impl IntoResponse {
     let date = NaiveDate::parse_from_str(&day_str, "%Y-%m-%d").unwrap();
     let schedule_today = create_day_sched(
-        get_day_static_schedule(conn.clone(), date).await,
-        get_all_tasks_sorted(conn).await,
+        &conn,
+        get_day_static_schedule(&conn, date).await,
+        get_all_tasks_sorted(&conn).await,
     )
     .await;
     Json(schedule_today)
 }
 
 async fn create_day_sched(
+    conn: &Surreal<Db>,
     static_sched_for_today: Vec<Routine>,
     mut tasks_sorted: Vec<Task>,
 ) -> Vec<SchedItem> {
+    conn.use_ns("core").use_db("main").await.unwrap();
     let mut day_sched: Vec<SchedItem> = Vec::new();
     for x in 00..24 {
         day_sched.push(SchedItem {
@@ -139,6 +142,11 @@ async fn create_day_sched(
                     );
                     task.time_alloted = task.time_alloted
                         + TimeDelta::try_minutes(time_alloted as i64).unwrap_or(TimeDelta::zero());
+                    let task_db = TaskDB::from(task.to_owned());
+                    let id = task.id.clone().unwrap_or("Task".to_string());
+                    let (table, key) = id.split_once(':').unwrap_or(("Tasks", id.as_str()));
+                    let _: Option<TaskDB> =
+                        conn.update((table, key)).content(task_db).await.unwrap();
                     scheditem.time_left_mins =
                         scheditem.time_left_mins.saturating_sub(time_alloted);
                     scheditem.title.push_str(&format!(", {}", &task.name));
@@ -154,7 +162,7 @@ async fn create_day_sched(
     day_sched
 }
 
-async fn get_day_static_schedule(conn: Surreal<Db>, date: NaiveDate) -> Vec<Routine> {
+async fn get_day_static_schedule(conn: &Surreal<Db>, date: NaiveDate) -> Vec<Routine> {
     conn.use_ns("core").use_db("main").await.unwrap();
     let sql = "SELECT * FROM Schedules WHERE $date IN start_date..=end_date";
     let mut result = conn.query(sql).bind(("date", date)).await.unwrap();
@@ -163,7 +171,7 @@ async fn get_day_static_schedule(conn: Surreal<Db>, date: NaiveDate) -> Vec<Rout
     schedule_today
 }
 
-async fn get_all_tasks_sorted(conn: Surreal<Db>) -> Vec<Task> {
+async fn get_all_tasks_sorted(conn: &Surreal<Db>) -> Vec<Task> {
     conn.use_ns("core").use_db("main").await.unwrap();
     let tasks: Vec<TaskDB> = conn.select("Tasks").await.unwrap();
     let tasks: Vec<Task> = tasks.into_iter().map(Task::from).collect();

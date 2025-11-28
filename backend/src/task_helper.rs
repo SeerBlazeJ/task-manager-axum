@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use surrealdb::{RecordId, Surreal, engine::local::Db};
 
 // Separate struct for database with RecordId
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TaskDB {
     id: Option<RecordId>,
     name: String,
@@ -24,7 +24,7 @@ pub struct TaskDB {
 // API struct with String ID for frontend
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Task {
-    id: Option<String>,
+    pub id: Option<String>,
     pub name: String,
     description: String,
     pub due_by: NaiveDateTime,

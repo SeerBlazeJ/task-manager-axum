@@ -12,6 +12,8 @@ use task_helper::{add_task, delete_task, get_task, get_task_by_id, mark_done, ma
 mod schedule_helper;
 use schedule_helper::{add_schedule, get_schedule_by_day};
 
+// TODO: Login/Signup system
+
 #[tokio::main]
 async fn main() {
     let db_conn = Surreal::new::<RocksDb>("TaskManagerApp").await.unwrap();

@@ -13,6 +13,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "TaskFLow_Backend"
+version = "0.0.8"
+dependencies = [
+ "axum",
+ "chrono",
+ "serde",
+ "serde_json",
+ "surrealdb",
+ "tokio",
+ "tower-http",
+]
+
+[[package]]
 name = "addr"
 version = "0.15.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -369,19 +382,6 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
-]
-
-[[package]]
-name = "backend"
-version = "0.1.0"
-dependencies = [
- "axum",
- "chrono",
- "serde",
- "serde_json",
- "surrealdb",
- "tokio",
- "tower-http",
 ]
 
 [[package]]
