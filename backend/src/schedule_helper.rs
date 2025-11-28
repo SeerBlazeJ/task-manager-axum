@@ -30,11 +30,23 @@ pub struct RoutineDB {
 }
 
 #[derive(Clone, Serialize, Deserialize)]
-pub struct SchedItem {
+pub struct SchedItemDB {
+    pub id: Option<RecordId>,
+    pub date: NaiveDate,
     pub represented_hour_start: u8,
     pub has_time: bool,
     pub time_left_mins: u8,
-    pub title: String,
+    pub title: Vec<String>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SchedItem {
+    pub id: Option<String>,
+    pub date: NaiveDate,
+    pub represented_hour_start: u8,
+    pub has_time: bool,
+    pub time_left_mins: u8,
+    pub title: Vec<String>,
 }
 
 // Conversions
@@ -68,6 +80,32 @@ impl From<Routine> for RoutineDB {
     }
 }
 
+impl From<SchedItem> for SchedItemDB {
+    fn from(scheditem: SchedItem) -> Self {
+        Self {
+            id: scheditem.id.and_then(|s| s.parse().ok()),
+            date: scheditem.date,
+            represented_hour_start: scheditem.represented_hour_start,
+            has_time: scheditem.has_time,
+            time_left_mins: scheditem.time_left_mins,
+            title: scheditem.title,
+        }
+    }
+}
+
+impl From<SchedItemDB> for SchedItem {
+    fn from(value: SchedItemDB) -> Self {
+        Self {
+            id: value.id.map(|s| s.to_string()),
+            date: value.date,
+            represented_hour_start: value.represented_hour_start,
+            has_time: value.has_time,
+            time_left_mins: value.time_left_mins,
+            title: value.title,
+        }
+    }
+}
+
 pub async fn add_schedule(
     State(conn): State<Surreal<Db>>,
     Json(new_routine): Json<Routine>,
@@ -82,7 +120,7 @@ pub async fn add_schedule(
     StatusCode::CREATED
 }
 
-// TODO: Create a new database for schedules
+// TODO: Create a new database for schedules, structs are ready
 pub async fn get_schedule_by_day(
     State(conn): State<Surreal<Db>>,
     Path(day_str): Path<String>,
@@ -90,6 +128,7 @@ pub async fn get_schedule_by_day(
     let date = NaiveDate::parse_from_str(&day_str, "%Y-%m-%d").unwrap();
     let schedule_today = create_day_sched(
         &conn,
+        date,
         get_day_static_schedule(&conn, date).await,
         get_all_tasks_sorted(&conn).await,
     )
@@ -99,23 +138,25 @@ pub async fn get_schedule_by_day(
 
 async fn create_day_sched(
     conn: &Surreal<Db>,
+    date: NaiveDate,
     static_sched_for_today: Vec<Routine>,
     mut tasks_sorted: Vec<Task>,
 ) -> Vec<SchedItem> {
-    conn.use_ns("core").use_db("main").await.unwrap();
     let mut day_sched: Vec<SchedItem> = Vec::new();
     for x in 00..24 {
         day_sched.push(SchedItem {
+            id: None,
+            date: date,
             represented_hour_start: x,
             has_time: true,
             time_left_mins: 60,
-            title: String::new(),
+            title: Vec::new(),
         });
     }
     for scheditem in &mut day_sched {
         for routine in &static_sched_for_today {
             if routine.start_time.hour() == scheditem.represented_hour_start as u32 {
-                scheditem.title = routine.title.clone();
+                scheditem.title.push(routine.title.clone());
                 scheditem.time_left_mins = scheditem
                     .time_left_mins
                     .saturating_sub(routine.start_time.minute() as u8);
@@ -125,7 +166,7 @@ async fn create_day_sched(
             } else if (routine.start_time.hour() as u8) < scheditem.represented_hour_start
                 && (routine.end_time.hour() as u8) > scheditem.represented_hour_start
             {
-                scheditem.title = routine.title.clone();
+                scheditem.title.push(routine.title.clone());
                 scheditem.has_time = false;
                 scheditem.time_left_mins = 0;
             }
@@ -145,11 +186,12 @@ async fn create_day_sched(
                     let task_db = TaskDB::from(task.to_owned());
                     let id = task.id.clone().unwrap_or("Task".to_string());
                     let (table, key) = id.split_once(':').unwrap_or(("Tasks", id.as_str()));
+                    conn.use_ns("core").use_db("main").await.unwrap();
                     let _: Option<TaskDB> =
                         conn.update((table, key)).content(task_db).await.unwrap();
                     scheditem.time_left_mins =
                         scheditem.time_left_mins.saturating_sub(time_alloted);
-                    scheditem.title.push_str(&format!(", {}", &task.name));
+                    scheditem.title.push(task.name.clone());
                     let low_remaining_time_threshold: u8 = 4;
                     if scheditem.time_left_mins <= low_remaining_time_threshold {
                         scheditem.has_time = false;

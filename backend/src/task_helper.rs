@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use surrealdb::{RecordId, Surreal, engine::local::Db};
 
 // Separate struct for database with RecordId
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TaskDB {
     id: Option<RecordId>,
     name: String,
