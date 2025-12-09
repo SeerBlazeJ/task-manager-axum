@@ -51,7 +51,6 @@ task-manager/
 │   ├── Cargo.toml
 │   ├── Dioxus.toml
 │   ├── tailwind.css
-│   └── .directory
 ├── .gitignore
 ├── LICENSE
 └── README.md
