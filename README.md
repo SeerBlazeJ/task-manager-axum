@@ -1,4 +1,4 @@
-
+``` Under Active development ```
 # Task Sorter
 
 A full-stack Rust desktop application for managing and organizing tasks with an intuitive interface. Built with modern Rust technologies for performance and reliability.
@@ -31,22 +31,30 @@ Task Sorter is a desktop task management application that helps you track todos 
 - **Reqwest** - HTTP client for backend communication
 
 ## Project Structure
-
 ```
-
-task-sorter/
+task-manager/
 ├── backend/
 │   ├── src/
-│   │   └── main.rs          \# Axum server with SurrealDB
+│   │   ├── main.rs                 # Axum server entry point
+│   │   ├── schedule_helper.rs      # Scheduling logic and algorithms
+│   │   └── task_helper.rs          # Task operations and database handlers
+│   ├── Cargo.lock
 │   └── Cargo.toml
 ├── frontend/
+│   ├── assets/
+│   │   ├── main.css                # Main stylesheet
+│   │   └── tailwind.css            # Tailwind CSS
 │   ├── src/
-│   │   ├── main.rs          \# Dioxus UI components
-│   │   └── backend_connector.rs  \# API client
+│   │   ├── backend_helper.rs       # API client and backend communication
+│   │   └── main.rs                 # Dioxus UI components
+│   ├── Cargo.lock
 │   ├── Cargo.toml
-│   └── Dioxus.toml
+│   ├── Dioxus.toml
+│   ├── tailwind.css
+│   └── .directory
+├── .gitignore
+├── LICENSE
 └── README.md
-
 ```
 
 ## Prerequisites
@@ -104,28 +112,17 @@ dx serve --hot-reload
 
 The backend exposes the following REST endpoints:
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/get_todos` | Retrieve all tasks |
-| POST | `/add_todo` | Create a new task |
-| POST | `/mark_done` | Mark a task as complete |
-| POST | `/mark_undone` | Mark a task as incomplete |
+| Method | Endpoint                  | Description                          |
+| ------ | ------------------------- | ------------------------------------ |
+| GET    | `/get_tasks`              | Retrieve all tasks                   |
+| GET    | `/get_task/{id}`          | Retrieve a single task by ID         |
+| POST   | `/add_task`               | Create a new task                    |
+| POST   | `/mark_done`              | Mark a task as completed             |
+| POST   | `/mark_undone`            | Mark a task as not completed         |
+| POST   | `/delete`                 | Delete a task                        |
+| POST   | `/add_sched`              | Add a scheduled item                 |
+| GET    | `/get_schedule/{day_str}` | Retrieve schedule for a specific day |
 
-### Task Structure
-
-```
-
-{
-"id": "todos:46ipnjzdjspjiufmffos",  // Auto-generated
-"name": "Task name",
-"description": "Task description",
-"due_by": "2025-10-15",
-"imp_lvl": 5,                         // 1-10 importance
-"req_time": "2h",                     // Estimated time
-"is_done": false
-}
-
-```
 
 ## Development
 
@@ -149,12 +146,10 @@ dx serve --hot-reload  \# Live reload UI changes
 
 ### Database
 
-The application uses SurrealDB with RocksDB storage. The database file (`TodosApp`) is created automatically in the backend directory on first run.
+The application uses SurrealDB with RocksDB storage. The database file (`TaskManagerApp`) is created automatically in the backend directory on first run.
 
 **Database Details:**
 - Namespace: `core`
-- Database: `todos`
-- Table: `todos`
 
 ## Building for Production
 
@@ -231,8 +226,8 @@ const BASE_URL: \&str = "http://localhost:3000";  // Change if needed
 ## Future Enhancements
 
 - [ ] Task scheduling with ML-based optimization
-- [ ] Calendar view integration
-- [ ] Task priority sorting algorithms
+- [X] Calendar view integration
+- [x] Task priority sorting algorithms
 - [ ] Export/import functionality
 - [ ] AI-powered offset calculations
 - [ ] Mobile app support
@@ -243,7 +238,7 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 
 ## License
 
-[MIT License](LICENSE) - feel free to use this project for learning or production.
+[License](LICENSE) - This project is protected from trademarks or patent use under the Creative Commons Zero v1.0 Universal License.
 
 ## Acknowledgments
 
