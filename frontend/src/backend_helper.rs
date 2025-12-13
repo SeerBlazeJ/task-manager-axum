@@ -30,10 +30,12 @@ pub struct Routine {
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SchedItem {
+    pub id: Option<String>,
+    pub date: NaiveDate,
     pub represented_hour_start: u8,
     pub has_time: bool,
     pub time_left_mins: u8,
-    pub title: String,
+    pub title: Vec<String>,
 }
 
 pub async fn get_todos() -> Vec<Task> {

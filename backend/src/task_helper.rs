@@ -127,9 +127,6 @@ pub async fn get_task_by_id(
     conn.use_ns("core").use_db("main").await.unwrap();
     let (table, key) = id.split_once(':').unwrap_or(("Tasks", id.as_str()));
     let task_db: Option<TaskDB> = conn.select((table, key)).await.unwrap();
-    let task_frontend: Option<Task> = match task_db {
-        Some(task) => Some(Task::from(task)),
-        None => None,
-    };
+    let task_frontend: Option<Task> = task_db.map(Task::from);
     Json(task_frontend)
 }

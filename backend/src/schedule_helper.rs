@@ -113,27 +113,47 @@ pub async fn add_schedule(
     conn.use_ns("core").use_db("main").await.unwrap();
     let db_scheditem = RoutineDB::from(new_routine);
     let _: Option<RoutineDB> = conn
-        .create("Schedules")
+        .create("static_schedule")
         .content(db_scheditem)
         .await
         .unwrap();
     StatusCode::CREATED
 }
 
-// TODO: Create a new database for schedules, structs are ready
+// Make day_tasks table dynamically updateable such that if user adds new task and there is extra space left in the table then it is added for the same day instead of keeping the schedule fixed (Should work only for future and no the past)
 pub async fn get_schedule_by_day(
     State(conn): State<Surreal<Db>>,
     Path(day_str): Path<String>,
 ) -> impl IntoResponse {
     let date = NaiveDate::parse_from_str(&day_str, "%Y-%m-%d").unwrap();
-    let schedule_today = create_day_sched(
-        &conn,
-        date,
-        get_day_static_schedule(&conn, date).await,
-        get_all_tasks_sorted(&conn).await,
-    )
-    .await;
-    Json(schedule_today)
+    conn.use_ns("core").use_db("main").await.unwrap();
+    let mut today_scheditems_dbresp = conn
+        .query("SELECT * FROM day_schedule WHERE $date = date")
+        .bind(("date", date))
+        .await
+        .unwrap();
+    let today_scheditems_db: Vec<SchedItemDB> = today_scheditems_dbresp.take(0).unwrap();
+    if !today_scheditems_db.is_empty() {
+        let today_scheditems: Vec<SchedItem> = today_scheditems_db
+            .into_iter()
+            .map(SchedItem::from)
+            .collect();
+        Json(today_scheditems)
+    } else {
+        let schedule_today = create_day_sched(
+            &conn,
+            date,
+            get_day_static_schedule(&conn, date).await,
+            get_all_tasks_sorted(&conn).await,
+        )
+        .await;
+        for val in schedule_today.clone() {
+            let db_value = SchedItemDB::from(val);
+            let _: Option<SchedItemDB> =
+                conn.create("day_schedule").content(db_value).await.unwrap();
+        }
+        Json(schedule_today)
+    }
 }
 
 async fn create_day_sched(
@@ -146,7 +166,7 @@ async fn create_day_sched(
     for x in 00..24 {
         day_sched.push(SchedItem {
             id: None,
-            date: date,
+            date,
             represented_hour_start: x,
             has_time: true,
             time_left_mins: 60,
@@ -181,8 +201,8 @@ async fn create_day_sched(
                             .signed_duration_since(task.time_alloted)
                             .num_minutes() as u8,
                     );
-                    task.time_alloted = task.time_alloted
-                        + TimeDelta::try_minutes(time_alloted as i64).unwrap_or(TimeDelta::zero());
+                    task.time_alloted +=
+                        TimeDelta::try_minutes(time_alloted as i64).unwrap_or(TimeDelta::zero());
                     let task_db = TaskDB::from(task.to_owned());
                     let id = task.id.clone().unwrap_or("Task".to_string());
                     let (table, key) = id.split_once(':').unwrap_or(("Tasks", id.as_str()));
@@ -206,7 +226,7 @@ async fn create_day_sched(
 
 async fn get_day_static_schedule(conn: &Surreal<Db>, date: NaiveDate) -> Vec<Routine> {
     conn.use_ns("core").use_db("main").await.unwrap();
-    let sql = "SELECT * FROM Schedules WHERE $date IN start_date..=end_date";
+    let sql = "SELECT * FROM static_schedule WHERE $date IN start_date..=end_date";
     let mut result = conn.query(sql).bind(("date", date)).await.unwrap();
     let schedule_db: Vec<RoutineDB> = result.take(0).unwrap();
     let schedule_today: Vec<Routine> = schedule_db.into_iter().map(Routine::from).collect();
@@ -222,7 +242,7 @@ async fn get_all_tasks_sorted(conn: &Surreal<Db>) -> Vec<Task> {
         .filter(|task| task.due_by > Local::now().naive_local())
         .collect();
     tasks.sort_by_key(|task| {
-        (-1 * (task.due_by - Local::now().naive_local()).num_minutes() as i32)
+        -((task.due_by - Local::now().naive_local()).num_minutes() as i32)
             + (task.imp_lvl * 10) as i32
     });
     tasks

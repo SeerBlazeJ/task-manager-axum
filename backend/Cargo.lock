@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "TaskFLow_Backend"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "axum",
  "chrono",
