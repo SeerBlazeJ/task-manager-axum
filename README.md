@@ -1,4 +1,4 @@
-``` Under Active development ```
+``` Under development ```
 # Task Sorter
 
 A full-stack Rust desktop application for managing and organizing tasks with an intuitive interface. Built with modern Rust technologies for performance and reliability.
@@ -222,14 +222,23 @@ const BASE_URL: \&str = "http://localhost:3000";  // Change if needed
 - Update Rust: `rustup update`
 - Clear Dioxus cache: `dx clean`
 
-## Future Enhancements
+### Goals
 
+#### Short Term
+- [ ] Integrate Tauri and its functionalities
+- [ ] Enhance UI and funcitonalities for modifying static schedules
+- [ ] Add suuoprt of file uploads for tasks, routines and events too ( When functionality is created )
+- [ ] Add support for events
+- [ ] Make databse for day schedules dynamically updatable to accomodate new entries
+
+#### Long Term
 - [ ] Task scheduling with ML-based optimization
 - [X] Calendar view integration
 - [x] Task priority sorting algorithms
 - [ ] Export/import functionality
 - [ ] AI-powered offset calculations
 - [ ] Mobile app support
+- [ ] Deployment ready app with all the features
 
 ## Contributing
 
