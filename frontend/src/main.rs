@@ -1,8 +1,8 @@
-use futures::executor::block_on;
 use std::str::FromStr;
 
 use chrono::{Datelike, NaiveDate, NaiveTime, Utc};
 use dioxus::prelude::*;
+use wasm_bindgen::prelude::*;
 
 mod backend_helper;
 use backend_helper::{
@@ -70,6 +70,12 @@ const CHECKBOX_STYLE: &str = "
     transition-all duration-200 cursor-pointer
     focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-slate-900
 ";
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = ["window", "__TAURI__", "core"])]
+    async fn invoke(cmd: &str, args: JsValue) -> JsValue;
+}
 
 #[derive(Routable, Clone, PartialEq)]
 enum Router {
@@ -561,12 +567,12 @@ fn Calendar(current_month: Signal<u32>, current_year: Signal<i32>) -> Element {
                                     let _ = navigator().push(format!("/day/{}", date_str));
                                 },
                                 class: if is_today { "w-full aspect-square flex items-center justify-center rounded-lg font-semibold
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        hover:from-teal-400 hover:to-teal-500 hover:scale-110
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        transition-all duration-200 animate-pulse-glow" } else { "w-full aspect-square flex items-center justify-center rounded-lg font-medium
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        bg-slate-900/50 hover:bg-slate-700 text-slate-300 hover:text-white
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        border border-slate-700 hover:border-teal-500/50
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        hover:scale-105 transition-all duration-200" },
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            bg-gradient-to-br from-teal-500 to-teal-600 text-white shadow-lg
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            hover:from-teal-400 hover:to-teal-500 hover:scale-110
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            transition-all duration-200 animate-pulse-glow" } else { "w-full aspect-square flex items-center justify-center rounded-lg font-medium
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            bg-slate-900/50 hover:bg-slate-700 text-slate-300 hover:text-white
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            border border-slate-700 hover:border-teal-500/50
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            hover:scale-105 transition-all duration-200" },
                                 "{day}"
                             }
                         }
@@ -904,113 +910,104 @@ fn SchedEditor(open_sched_editor: Signal<bool>) -> Element {
         }
     }
 }
-
 #[component]
 fn Task_details(curr_task_id: Signal<String>) -> Element {
-    let curr_task: Option<Task> = block_on(get_todo_by_id(curr_task_id.read().clone()));
-    match curr_task {
-        Some(curr_task) => {
-            let due_formatted = curr_task.due_by.format("%d %b %Y, %H:%M").to_string();
-            let imp_level: u8 = curr_task.imp_lvl;
+    let curr_task = use_resource(use_reactive!(|curr_task_id| async move {
+        get_todo_by_id(curr_task_id()).await
+    }));
 
-            rsx! {
-                div { class: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4",
-                    div { class: "w-full max-w-2xl animate-fade-in-scale",
-                        div { class: CARD_STYLE,
-                            // Header
-                            div { class: "flex items-center justify-between mb-8",
-                                h1 { class: "text-2xl font-bold text-teal-400", "📋 Task Details" }
-                                button {
-                                    class: BUTTON_SECONDARY,
-                                    onclick: move |_| curr_task_id.set(String::new()),
-                                    "← Back"
-                                }
-                            }
-
-                            // Task Name
-                            div { class: "mb-6",
-                                div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                    "Task"
-                                }
-                                h2 { class: "text-3xl font-bold text-white", "{curr_task.name}" }
-                            }
-
-                            // Description
-                            div { class: "mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700",
-                                div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                    "Description"
-                                }
-                                p { class: "text-slate-300 leading-relaxed",
-                                    "{curr_task.description}"
-                                }
-                            }
-
-                            // Details Grid
-                            div { class: "grid md:grid-cols-2 gap-6 mb-6",
-                                // Due Date
-                                div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
-                                    div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                        "📅 Due Date"
+    rsx! {
+        div { class: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4",
+            div { class: "w-full max-w-2xl animate-fade-in-scale",
+                div { class: CARD_STYLE,
+                    match &*curr_task.read() {
+                        Some(Some(task)) => {
+                            let due_formatted = task.due_by.format("%d %b %Y, %H:%M").to_string();
+                            let imp_level: u8 = task.imp_lvl;
+                            rsx! {
+                                // Header
+                                div { class: "flex items-center justify-between mb-8",
+                                    h1 { class: "text-2xl font-bold text-teal-400", "📋 Task Details" }
+                                    button {
+                                        class: BUTTON_SECONDARY,
+                                        onclick: move |_| curr_task_id.set(String::new()),
+                                        "← Back"
                                     }
-                                    p { class: "text-white font-medium", "{due_formatted}" }
                                 }
 
-                                // Required Time
-                                div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                // Task Name
+                                div { class: "mb-6",
                                     div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                        "⏱️ Time Required"
+                                        "Task"
                                     }
-                                    p { class: "text-white font-medium", "{curr_task.req_time}" }
+                                    h2 { class: "text-3xl font-bold text-white", "{task.name}" }
                                 }
 
-                                // Remianing Time
-                                div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                // Description
+                                div { class: "mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-700",
                                     div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                        "⏳ Time Alloted"
+                                        "Description"
                                     }
-                                    p { class: "text-white font-medium", "{curr_task.time_alloted}" }
+                                    p { class: "text-slate-300 leading-relaxed", "{task.description}" }
                                 }
 
-                                // Importance
-                                div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
-                                    div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                        "🎯 Importance"
+                                // Details Grid
+                                div { class: "grid md:grid-cols-2 gap-6 mb-6",
+                                    // Due Date
+                                    div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                        div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
+                                            "📅 Due Date"
+                                        }
+                                        p { class: "text-white font-medium", "{due_formatted}" }
                                     }
-                                    div { class: "flex items-center gap-3",
-                                        span { class: if imp_level >= 7 { "px-4 py-1.5 rounded-full text-sm font-semibold bg-red-500/20 text-red-400 border border-red-500/30" } else if imp_level >= 4 { "px-4 py-1.5 rounded-full text-sm font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" } else { "px-4 py-1.5 rounded-full text-sm font-semibold bg-green-500/20 text-green-400 border border-green-500/30" },
-                                            "Level {imp_level}/10"
+
+                                    // Required Time
+                                    div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                        div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
+                                            "⏱️ Time Required"
+                                        }
+                                        p { class: "text-white font-medium", "{task.req_time}" }
+                                    }
+
+                                    // Time Alloted
+                                    div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                        div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
+                                            "⏳ Time Alloted"
+                                        }
+                                        p { class: "text-white font-medium", "{task.time_alloted}" }
+                                    }
+
+                                    // Importance
+                                    div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                        div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
+                                            "🎯 Importance"
+                                        }
+                                        div { class: "flex items-center gap-3",
+                                            span { class: if imp_level >= 7 { "px-4 py-1.5 rounded-full text-sm font-semibold bg-red-500/20 text-red-400 border border-red-500/30" } else if imp_level >= 4 { "px-4 py-1.5 rounded-full text-sm font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" } else { "px-4 py-1.5 rounded-full text-sm font-semibold bg-green-500/20 text-green-400 border border-green-500/30" },
+                                                "Level {imp_level}/10"
+                                            }
                                         }
                                     }
-                                }
 
-                                // Status
-                                div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
-                                    div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
-                                        "✓ Status"
-                                    }
-                                    span { class: if curr_task.is_done { "px-4 py-1.5 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" } else { "px-4 py-1.5 rounded-full text-sm font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/30" },
-                                        if curr_task.is_done {
-                                            "✅ Completed"
-                                        } else {
-                                            "⏳ Pending"
+                                    // Status
+                                    div { class: "p-4 bg-slate-900/50 rounded-lg border border-slate-700",
+                                        div { class: "text-sm font-semibold text-slate-400 mb-2 uppercase tracking-wide",
+                                            "✓ Status"
+                                        }
+                                        span { class: if task.is_done { "px-4 py-1.5 rounded-full text-sm font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" } else { "px-4 py-1.5 rounded-full text-sm font-semibold bg-orange-500/20 text-orange-400 border border-orange-500/30" },
+                                            if task.is_done {
+                                                "✅ Completed"
+                                            } else {
+                                                "⏳ Pending"
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                }
-            }
-        }
-        None => {
-            rsx! {
-                div { class: "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4",
-                    div { class: "w-full max-w-2xl animate-fade-in-scale",
-                        div { class: CARD_STYLE,
+                        Some(None) => rsx! {
                             div { class: "flex items-center justify-between mb-8",
-                                h1 { class: "text-2xl font-bold text-teal-400",
-                                    "Task not found for the given id"
-                                }
+                                h1 { class: "text-2xl font-bold text-teal-400", "Task not found for the given id" }
                             }
                             button {
                                 class: BUTTON_PRIMARY,
@@ -1019,7 +1016,13 @@ fn Task_details(curr_task_id: Signal<String>) -> Element {
                                 },
                                 "Go Back"
                             }
-                        }
+                        },
+                        None => rsx! {
+                            div { class: "text-center py-12",
+                                div { class: "loading-skeleton h-64 rounded-lg" }
+                                p { class: "text-slate-400 mt-4", "Loading task details..." }
+                            }
+                        },
                     }
                 }
             }

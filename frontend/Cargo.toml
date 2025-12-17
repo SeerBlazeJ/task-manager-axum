@@ -1,6 +1,6 @@
 [package]
 name = "TaskFlow"
-version = "0.0.9"
+version = "0.1.0"
 authors = ["SeerBlazeJ <kaivanmehta957@gmail.com>"]
 edition = "2021"
 
@@ -14,9 +14,18 @@ futures = "0.3.31"
 reqwest = { version = "0.12.24", features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
 
 [features]
-default = ["desktop"]
+default = ["web"]
 web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 mobile = ["dioxus/mobile"]
+
+[profile.release]
+lto = true
+opt-level = 'z'   # Optimize for size
+codegen-units = 1
+strip = true      # This is the key fix: removes DWARF symbols

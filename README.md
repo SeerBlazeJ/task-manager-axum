@@ -27,39 +27,14 @@ Task Sorter is a desktop task management application that helps you track todos 
 
 ### Frontend
 - **Dioxus 0.7.0** - Cross-platform UI framework
-- **Dioxus Desktop** - Native desktop application wrapper
+- **Tauri** - Native desktop application wrapper
 - **Reqwest** - HTTP client for backend communication
-
-## Project Structure
-```
-task-manager/
-├── backend/
-│   ├── src/
-│   │   ├── main.rs                 # Axum server entry point
-│   │   ├── schedule_helper.rs      # Scheduling logic and algorithms
-│   │   └── task_helper.rs          # Task operations and database handlers
-│   ├── Cargo.lock
-│   └── Cargo.toml
-├── frontend/
-│   ├── assets/
-│   │   ├── main.css                # Main stylesheet
-│   │   └── tailwind.css            # Tailwind CSS
-│   ├── src/
-│   │   ├── backend_helper.rs       # API client and backend communication
-│   │   └── main.rs                 # Dioxus UI components
-│   ├── Cargo.lock
-│   ├── Cargo.toml
-│   ├── Dioxus.toml
-│   ├── tailwind.css
-├── .gitignore
-├── LICENSE
-└── README.md
-```
 
 ## Prerequisites
 
 - Rust 1.70+ (install from [rustup.rs](https://rustup.rs))
 - Dioxus CLI: `cargo install dioxus-cli`
+- Tauri CLI: `cargo install tauri-cli`
 
 ## Installation
 
@@ -95,11 +70,11 @@ In a new terminal:
 ```
 
 cd frontend
-dx serve --platform desktop
+cargo tauri dev
 
 ```
 
-Or for development with hot reload:
+Or for development with hot reload (uses dioxus, not tauri):
 
 ```
 
@@ -139,7 +114,7 @@ cargo watch -x run  \# Auto-reload on changes
 ```
 
 cd frontend
-dx serve --hot-reload  \# Live reload UI changes
+cargo tauri dev
 
 ```
 
@@ -168,11 +143,10 @@ The binary will be at `target/release/backend`
 ```
 
 cd frontend
-dx build --release --platform desktop
-
+cargo tauri build
 ```
 
-Create distributable bundles:
+Create distributable bundles (Yet to be update for tauri) :
 
 ```
 
@@ -220,7 +194,6 @@ const BASE_URL: \&str = "http://localhost:3000";  // Change if needed
 ### Build errors
 - Run `cargo clean` in both directories
 - Update Rust: `rustup update`
-- Clear Dioxus cache: `dx clean`
 
 ### Goals
 
@@ -251,10 +224,10 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## Acknowledgments
 
 - [Dioxus](https://dioxuslabs.com/) - Amazing Rust UI framework
+- [Tauri](https://tauri.app) - Wrapper around web apps to create native desktop apps, that are secure and lightweight
 - [Axum](https://github.com/tokio-rs/axum) - Ergonomic web framework
 - [SurrealDB](https://surrealdb.com/) - Next-generation database
 
 ---
 
 Built with 🦀 Rust
-```
