@@ -27,14 +27,12 @@ Task Sorter is a desktop task management application that helps you track todos 
 
 ### Frontend
 - **Dioxus 0.7.0** - Cross-platform UI framework
-- **Tauri** - Native desktop application wrapper
 - **Reqwest** - HTTP client for backend communication
 
 ## Prerequisites
 
 - Rust 1.70+ (install from [rustup.rs](https://rustup.rs))
 - Dioxus CLI: `cargo install dioxus-cli`
-- Tauri CLI: `cargo install tauri-cli`
 
 ## Installation
 
@@ -70,11 +68,10 @@ In a new terminal:
 ```
 
 cd frontend
-cargo tauri dev
-
+dx serve
 ```
 
-Or for development with hot reload (uses dioxus, not tauri):
+Or for development with hot reload:
 
 ```
 
@@ -114,8 +111,7 @@ cargo watch -x run  \# Auto-reload on changes
 ```
 
 cd frontend
-cargo tauri dev
-
+dx serve
 ```
 
 ### Database
@@ -143,10 +139,10 @@ The binary will be at `target/release/backend`
 ```
 
 cd frontend
-cargo tauri build
+dx build
 ```
 
-Create distributable bundles (Yet to be update for tauri) :
+Create distributable bundles:
 
 ```
 
@@ -198,7 +194,6 @@ const BASE_URL: \&str = "http://localhost:3000";  // Change if needed
 ### Goals
 
 #### Short Term
-- [ ] Integrate Tauri and its functionalities
 - [ ] Enhance UI and funcitonalities for modifying static schedules
 - [ ] Add suuoprt of file uploads for tasks, routines and events too ( When functionality is created )
 - [ ] Add support for events
@@ -224,7 +219,6 @@ Contributions are welcome! Please feel free to submit pull requests or open issu
 ## Acknowledgments
 
 - [Dioxus](https://dioxuslabs.com/) - Amazing Rust UI framework
-- [Tauri](https://tauri.app) - Wrapper around web apps to create native desktop apps, that are secure and lightweight
 - [Axum](https://github.com/tokio-rs/axum) - Ergonomic web framework
 - [SurrealDB](https://surrealdb.com/) - Next-generation database
 
