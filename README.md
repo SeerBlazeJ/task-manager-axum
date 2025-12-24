@@ -1,4 +1,3 @@
-``` Under development ```
 # Task Sorter
 
 A full-stack Rust desktop application for managing and organizing tasks with an intuitive interface. Built with modern Rust technologies for performance and reliability.
